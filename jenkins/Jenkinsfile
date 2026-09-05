@@ -1,0 +1,105 @@
+// Jenkinsfile - Pipeline CI/CD pour l'application Java
+//
+// Pre-requis Jenkins (a configurer une fois dans l'interface, cf README) :
+//   - Plugins : Pipeline, Git, Docker Pipeline, SonarQube Scanner, Credentials Binding
+//   - Un outil Maven nomme "Maven3" (Manage Jenkins > Tools)
+//   - Un serveur SonarQube nomme "SonarQubeServer" (Manage Jenkins > System)
+//   - Credentials "dockerhub-credentials" (Username/Password) pour le push Docker Hub
+//   - Credentials "sonar-token" (Secret text) : token genere depuis SonarQube
+
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven3'
+    }
+
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        DOCKER_IMAGE          = "TON_USER_DOCKERHUB/demo-cicd-jenkins"
+        IMAGE_TAG             = "${env.BUILD_NUMBER}"
+    }
+
+    options {
+        // Evite d'accumuler les anciens builds indefiniment
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build & Unit Tests') {
+            steps {
+                dir('app') {
+                    sh 'mvn -B clean verify'
+                }
+            }
+            post {
+                always {
+                    junit 'app/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                dir('app') {
+                    withSonarQubeEnv('SonarQubeServer') {
+                        sh 'mvn -B sonar:sonar -Dsonar.token=$SONAR_AUTH_TOKEN'
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                // Bloque le pipeline si SonarQube renvoie un statut KO
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                dir('app') {
+                    sh "docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} -t ${DOCKER_IMAGE}:latest ."
+                }
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                sh "echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin"
+                sh "docker push ${DOCKER_IMAGE}:${IMAGE_TAG}"
+                sh "docker push ${DOCKER_IMAGE}:latest"
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                // Deploiement simple en local sur la VM Jenkins (VM1).
+                // On stoppe/supprime l'ancien conteneur puis on relance la nouvelle image.
+                sh '''
+                    docker rm -f demo-app || true
+                    docker run -d --name demo-app -p 8080:8080 ${DOCKER_IMAGE}:latest
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline termine avec succes : image ${DOCKER_IMAGE}:${IMAGE_TAG} deployee."
+        }
+        failure {
+            echo "Le pipeline a echoue. Verifie les logs des etapes ci-dessus."
+        }
+    }
+}
