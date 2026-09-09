@@ -20,7 +20,7 @@
     <properties>
         <java.version>21</java.version>
         <sonar.projectKey>demo-cicd-jenkins</sonar.projectKey>
-        <sonar.host.url>http://SONARQUBE_VM_IP:9000</sonar.host.url>
+        <sonar.host.url>http://192.168.86.135:9000</sonar.host.url>
         <sonar.coverage.jacoco.xmlReportPaths>
             ${project.build.directory}/site/jacoco/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>

@@ -16,7 +16,7 @@ pipeline {
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
-        DOCKER_IMAGE          = "TON_USER_DOCKERHUB/demo-cicd-jenkins"
+        DOCKER_IMAGE          = "julespoctest/demo-cicd-jenkins"
         IMAGE_TAG             = "${env.BUILD_NUMBER}"
     }
 
