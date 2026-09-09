@@ -53,15 +53,15 @@ stage('Build & Unit Tests') {
     }
 }
 
-    stage('SonarQube Analysis') {
+stage('SonarQube Analysis') {
     steps {
         dir('app') {
             withSonarQubeEnv('SonarQubeServer') {
-                withCredentials([
-                    string(credentialsId: 'sonar-token', variable: 'SONAR_AUTH_TOKEN')
-                ]) {
-                    sh 'mvn -B sonar:sonar -Dsonar.token=$SONAR_AUTH_TOKEN'
-                }
+                sh '''
+                    mvn -B sonar:sonar \
+                      -Dsonar.login=admin \
+                      -Dsonar.password=toto
+                '''
             }
         }
     }
