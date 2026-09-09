@@ -34,19 +34,19 @@ pipeline {
             }
         }
 
-        stage('Build & Unit Tests') {
-            steps {
-                dir('app') {
-                    sh 'mvn -B clean verify'
-                }
-            }
-            post {
-                always {
-                    junit 'app/target/surefire-reports/*.xml',
-                    allowEmptyResults: true
-                }
-            }
+stage('Build & Unit Tests') {
+    steps {
+        dir('app') {
+            sh 'mvn -B clean verify'
         }
+    }
+    post {
+        always {
+            junit testResults: 'app/target/surefire-reports/*.xml',
+                  allowEmptyResults: true
+        }
+    }
+}
 
         stage('SonarQube Analysis') {
             steps {
