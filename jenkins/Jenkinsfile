@@ -42,7 +42,8 @@ pipeline {
             }
             post {
                 always {
-                   // junit 'app/target/surefire-reports/*.xml'
+                    junit 'app/target/surefire-reports/*.xml',
+                    allowEmptyResults: true
                 }
             }
         }
