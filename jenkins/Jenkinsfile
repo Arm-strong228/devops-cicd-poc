@@ -37,7 +37,12 @@ pipeline {
 stage('Build & Unit Tests') {
     steps {
         dir('app') {
-            sh 'mvn -B clean verify'
+            sh '''
+                java -version
+                javac -version
+                mvn -version
+                mvn -B clean verify
+            '''
         }
     }
     post {
