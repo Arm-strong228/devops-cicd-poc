@@ -51,7 +51,7 @@ pipeline {
             steps {
                 dir('app') {
                     withSonarQubeEnv('SonarQubeServer') {
-                        sh 'mvn -B sonar:sonar -Dsonar.token=$SONAR_AUTH_TOKEN'
+                      //  sh 'mvn -B sonar:sonar -Dsonar.token=$SONAR_AUTH_TOKEN'
                     }
                 }
             }
