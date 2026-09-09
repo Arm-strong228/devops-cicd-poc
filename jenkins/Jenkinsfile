@@ -98,7 +98,7 @@ stage('Build & Unit Tests') {
                 // On stoppe/supprime l'ancien conteneur puis on relance la nouvelle image.
                 sh '''
                     docker rm -f demo-app || true
-                    docker run -d --name demo-app -p 8080:8080 ${DOCKER_IMAGE}:latest
+                    docker run -d --name demo-app -p 8081:8080 ${DOCKER_IMAGE}:latest
                 '''
             }
         }
