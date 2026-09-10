@@ -97,8 +97,8 @@ stage('Build & Unit Tests') {
                 // Deploiement simple en local sur la VM Jenkins (VM1).
                 // On stoppe/supprime l'ancien conteneur puis on relance la nouvelle image.
                 sh '''
-                    docker rm -f demo-app || true
-                    docker run -d --name demo-app -p 8081:8080 ${DOCKER_IMAGE}:latest
+                    docker rm -f demo-app || true  
+                    docker run -d --name demo-app --restart unless-stopped -p 8081:8080 ${DOCKER_IMAGE}:latest
                 '''
             }
         }
