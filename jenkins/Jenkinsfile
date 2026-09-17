@@ -102,8 +102,7 @@ stage('Build & Unit Tests') {
                 '''
             }
         }
-    }
-       stage('Deploy to Kubernetes') {
+        stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: 'k3s-kubeconfig', variable: 'KUBECONFIG')]) {
                     sh 'kubectl set image deployment/demo-app demo-app=${DOCKER_IMAGE}:${IMAGE_TAG} --record'
@@ -111,6 +110,8 @@ stage('Build & Unit Tests') {
                 }
             }
         }
+    }
+
     }
 
     post {
