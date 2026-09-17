@@ -6,6 +6,7 @@
 //   - Un serveur SonarQube nomme "SonarQubeServer" (Manage Jenkins > System)
 //   - Credentials "dockerhub-credentials" (Username/Password) pour le push Docker Hub
 //   - Credentials "sonar-token" (Secret text) : token genere depuis SonarQube
+//   - Credentials "k3s-kubeconfig" (Secret file) : fichier kubeconfig du cluster K3s
 
 pipeline {
     agent any
@@ -21,7 +22,6 @@ pipeline {
     }
 
     options {
-        // Evite d'accumuler les anciens builds indefiniment
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timestamps()
     }
@@ -34,42 +34,31 @@ pipeline {
             }
         }
 
-stage('Build & Unit Tests') {
-    steps {
-        dir('app') {
-            sh '''
-                java -version
-                javac -version
-                mvn -version
-                mvn -B clean verify
-            '''
-        }
-    }
-    post {
-        always {
-            junit testResults: 'app/target/surefire-reports/*.xml',
-                  allowEmptyResults: true
-        }
-    }
-}
-
-    stage('SonarQube Analysis') {
-    steps {
-        dir('app') {
-            withSonarQubeEnv('SonarQubeServer') {
-                withCredentials([
-                    string(credentialsId: 'sonar-token', variable: 'SONAR_AUTH_TOKEN')
-                ]) {
-                    sh 'mvn -B sonar:sonar -Dsonar.token=$SONAR_AUTH_TOKEN'
+        stage('Build & Unit Tests') {
+            steps {
+                dir('app') {
+                    sh 'mvn -B clean verify'
+                }
+            }
+            post {
+                always {
+                    junit 'app/target/surefire-reports/*.xml'
                 }
             }
         }
-    }
-}
+
+        stage('SonarQube Analysis') {
+            steps {
+                dir('app') {
+                    withSonarQubeEnv('SonarQubeServer') {
+                        sh 'mvn -B sonar:sonar -Dsonar.token=$SONAR_AUTH_TOKEN'
+                    }
+                }
+            }
+        }
 
         stage('Quality Gate') {
             steps {
-                // Bloque le pipeline si SonarQube renvoie un statut KO
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
@@ -95,11 +84,19 @@ stage('Build & Unit Tests') {
         stage('Deploy') {
             steps {
                 // Deploiement simple en local sur la VM Jenkins (VM1).
-                // On stoppe/supprime l'ancien conteneur puis on relance la nouvelle image.
                 sh '''
-                    docker rm -f demo-app || true  
+                    docker rm -f demo-app || true
                     docker run -d --name demo-app --restart unless-stopped -p 8081:8080 ${DOCKER_IMAGE}:latest
                 '''
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([file(credentialsId: 'k3s-kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh 'kubectl set image deployment/demo-app demo-app=${DOCKER_IMAGE}:${IMAGE_TAG} --record'
+                    sh 'kubectl rollout status deployment/demo-app'
+                }
             }
         }
     }
