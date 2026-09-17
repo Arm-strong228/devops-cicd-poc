@@ -111,9 +111,7 @@ stage('Build & Unit Tests') {
             }
         }
     }
-
     }
-
     post {
         success {
             echo "Pipeline termine avec succes : image ${DOCKER_IMAGE}:${IMAGE_TAG} deployee."
