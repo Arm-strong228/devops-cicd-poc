@@ -1,0 +1,9 @@
+---
+# Ce handler n'est declenche que si une tache precedente l'a explicitement
+# notifie (installation de Jenkins, ou changement du groupe docker) --
+# Ansible ne redemarre jamais un service "pour rien".
+
+- name: redemarrer jenkins
+  systemd:
+    name: jenkins
+    state: restarted

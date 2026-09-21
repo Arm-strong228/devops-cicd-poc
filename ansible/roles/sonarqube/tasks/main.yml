@@ -1,0 +1,36 @@
+---
+# Role "sonarqube" - equivalent du script infra/vm2-sonarqube/install_sonarqube.sh
+# Pre-requis : le role "docker" doit avoir ete applique avant sur cette VM.
+
+- name: Appliquer vm.max_map_count (requis par Elasticsearch, utilise en interne par SonarQube)
+  ansible.posix.sysctl:
+    name: vm.max_map_count
+    value: '524288'
+    state: present
+    reload: yes
+
+- name: Appliquer fs.file-max
+  ansible.posix.sysctl:
+    name: fs.file-max
+    value: '131072'
+    state: present
+    reload: yes
+
+- name: Creer le dossier de destination sur la VM
+  file:
+    path: "/home/{{ ansible_user }}/sonarqube"
+    state: directory
+    owner: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Copier le docker-compose.yml de SonarQube
+  copy:
+    src: docker-compose.yml
+    dest: "/home/{{ ansible_user }}/sonarqube/docker-compose.yml"
+    owner: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Lancer SonarQube et PostgreSQL avec Docker Compose
+  community.docker.docker_compose_v2:
+    project_src: "/home/{{ ansible_user }}/sonarqube"
+    state: present
