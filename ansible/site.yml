@@ -1,0 +1,27 @@
+---
+# site.yml - Playbook principal du projet POC CI/CD
+#
+# Usage :
+#   ansible-playbook site.yml
+#
+# Reproduit, de maniere idempotente et automatisee, tout ce qui a ete fait
+# manuellement pendant la construction du POC : installation de Docker sur
+# les deux VM, puis Jenkins sur VM1, puis SonarQube + PostgreSQL sur VM2.
+
+- name: Installer Docker sur toutes les VM du projet
+  hosts: docker_hosts
+  become: yes
+  roles:
+    - docker
+
+- name: Installer et configurer Jenkins sur VM1
+  hosts: vm1_jenkins
+  become: yes
+  roles:
+    - jenkins
+
+- name: Installer SonarQube + PostgreSQL sur VM2
+  hosts: vm2_sonarqube
+  become: yes
+  roles:
+    - sonarqube

@@ -1,0 +1,70 @@
+---
+# Role "jenkins" - equivalent du script infra/vm1-jenkins/install_jenkins.sh
+#
+# Contient deux corrections directement issues d'incidents reels rencontres
+# pendant la construction manuelle du projet :
+#   1. La cle GPG Jenkins a subi une rotation en decembre 2025 : la cle
+#      "jenkins.io-2023.key" utilisee par la plupart des tutoriels est perimee,
+#      il faut "jenkins.io-2026.key" (erreur NO_PUBKEY sinon).
+#   2. L'utilisateur systeme "jenkins" doit etre ajoute manuellement au groupe
+#      "docker", sinon le pipeline echoue avec "permission denied" au moment
+#      du build de l'image Docker.
+
+- name: Installer gnupg, fontconfig et OpenJDK 21
+  apt:
+    name:
+      - gnupg
+      - fontconfig
+      - openjdk-21-jre
+    state: present
+    update_cache: yes
+
+- name: Nettoyer une eventuelle cle/depot precedent
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /usr/share/keyrings/jenkins-keyring.gpg
+    - /etc/apt/sources.list.d/jenkins.list
+
+- name: Telecharger et convertir la cle GPG Jenkins (version 2026)
+  shell: |
+    curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key | gpg --dearmor -o /usr/share/keyrings/jenkins-keyring.gpg
+  args:
+    creates: /usr/share/keyrings/jenkins-keyring.gpg
+
+- name: Verifier que la cle a bien ete telechargee
+  stat:
+    path: /usr/share/keyrings/jenkins-keyring.gpg
+  register: jenkins_key
+
+- name: Echouer explicitement si la cle est absente ou vide
+  fail:
+    msg: "La cle GPG Jenkins n'a pas pu etre telechargee, verifie la connexion reseau de la VM."
+  when: not jenkins_key.stat.exists or jenkins_key.stat.size == 0
+
+- name: Ajouter le depot Jenkins
+  apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/"
+    state: present
+    filename: jenkins
+
+- name: Installer Jenkins
+  apt:
+    name: jenkins
+    state: present
+    update_cache: yes
+  notify: redemarrer jenkins
+
+- name: Ajouter l'utilisateur jenkins au groupe docker (corrige l'incident permission denied)
+  user:
+    name: jenkins
+    groups: docker
+    append: yes
+  notify: redemarrer jenkins
+
+- name: S'assurer que le service Jenkins est actif et demarre au boot
+  systemd:
+    name: jenkins
+    state: started
+    enabled: yes
